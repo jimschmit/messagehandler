@@ -9,12 +9,10 @@ import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.Session;
 import java.sql.Connection;
-import java.sql.Date;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Time;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Properties;
@@ -109,15 +107,15 @@ public class Database
         }
     }
     
-    public void closeResultSet(){
-        try
-        {
-            resultSet.close();
-        } catch (SQLException ex)
-        {
-            Logger.getLogger(Database.class.getName()).log(Level.SEVERE, null, ex);
-        }
-    }
+//    public void closeResultSet(){
+//        try
+//        {
+//            resultSet.close();
+//        } catch (SQLException ex)
+//        {
+//            Logger.getLogger(Database.class.getName()).log(Level.SEVERE, null, ex);
+//        }
+//    }
     
     public void closeStatement(){
         try
@@ -186,7 +184,7 @@ public class Database
                 else currentUser = VIEWER;
                 
                 closeStatement();
-                closeResultSet();
+                sth.close();
                 closeConnection();
                 result = true;
             }
@@ -226,6 +224,7 @@ public class Database
     public void addLanguage(String description){
         try
         {
+            ResultSet resultSet;
             connectToDatabase();
             sth = conn.prepareStatement("CALL p_insertLanguage(" + "\"" 
                     + description + "\", @status, @error)");
@@ -286,6 +285,7 @@ public class Database
        int result = -1;
        try
        {
+           ResultSet resultSet;
            connectToDatabase();
            sth = conn.prepareStatement("SELECT (idLanguage) FROM tbllanguage WHERE dtDescription = '" + language.description + "'");
            resultSet = sth.executeQuery();
@@ -371,6 +371,7 @@ public class Database
         int id = -1;
         try
         {
+            ResultSet resultSet;
             connectToDatabase();
             sth = conn.prepareStatement("SELECT MAX(idLanguage) FROM tbllanguage");
             resultSet = sth.executeQuery();
@@ -396,6 +397,7 @@ public class Database
         int id;
         try
         {
+            ResultSet resultSet;
             connectToDatabase();
             sth = conn.prepareStatement("CALL p_insertUser('" + name +"'" + ", " + "'" + password + "'" + ", " + level + ", @status, @error)" );
             sth.executeUpdate();
@@ -404,14 +406,14 @@ public class Database
             resultSet.first();
             id = resultSet.getInt(1);
             closeStatement();
-            closeResultSet();
+            sth.close();
             sth = conn.prepareStatement("SELECT * FROM tbluser WHERE idUser = " + id);
             resultSet = sth.executeQuery();
             resultSet.first();
             Timestamp createDate = resultSet.getTimestamp("dtCreateDate");
             
             alUsers.add(new User(id, name, password, createDate, level));
-            closeResultSet();
+            sth.close();
             closeStatement();
             closeConnection();
         }
@@ -547,6 +549,7 @@ public class Database
     
     public User getUser(int id){
         User user = null;
+        ResultSet resultSet;
         try
         {
             connectToDatabase();
@@ -566,8 +569,15 @@ public class Database
             Logger.getLogger(Database.class.getName()).log(Level.SEVERE, null, ex);
         }
         finally{
-            closeResultSet();
-            closeConnection();
+            try
+            {
+                sth.close();
+                closeConnection();
+            }
+            catch (SQLException ex)
+            {
+                Logger.getLogger(Database.class.getName()).log(Level.SEVERE, null, ex);
+            }
         }
         return user;
     }
@@ -587,6 +597,7 @@ public class Database
     
     public void addErrorCode(int fiLanguage, String description){
         int idErrorCode;
+        ResultSet resultSet;
         try
         {
             connectToDatabase();
@@ -597,7 +608,7 @@ public class Database
             resultSet.first();
             idErrorCode = resultSet.getInt(1);
             closeStatement();
-            closeResultSet();
+            sth.close();
             
             sth = conn.prepareStatement("CALL p_insertErrorCode_language(" + idErrorCode
                     + ", " + fiLanguage + ", '" + description + "'" + ", @status, @errorCode)");
@@ -666,6 +677,7 @@ public class Database
     
     public int getFiErrorCode(int fiLanguage, String description){
         int result = -1;
+        ResultSet resultSet;
         try
         {
             connectToDatabase();
@@ -934,6 +946,7 @@ public class Database
     public void addMessageType(int fiLanguage, String description)
     {
         int idMessageType;
+        ResultSet resultSet;
         try
         {
             connectToDatabase();
@@ -944,7 +957,7 @@ public class Database
             resultSet.first();
             idMessageType = resultSet.getInt(1);
             closeStatement();
-            closeResultSet();
+            sth.close();
             
             sth = conn.prepareStatement("CALL p_insertMessageType_language(" + idMessageType
                     + ", " + fiLanguage + ", '" + description + "'" + ", @status, @errorCode)");
@@ -1013,6 +1026,7 @@ public class Database
     
     public int getFiMessageType(int fiLanguage, String description){
         int result = -1;
+        ResultSet resultSet;
         try
         {
             connectToDatabase();
@@ -1221,12 +1235,12 @@ public class Database
     
     public int getLastIdMessage(){
         int id = -1;
-        ResultSet tempResultSet = null;
+        ResultSet resultSet = null;
         try
         {
             connectToDatabase();
             sth = conn.prepareStatement("SELECT MAX(idMessage) FROM tblmessage");
-            tempResultSet = sth.executeQuery();
+            resultSet = sth.executeQuery();
             id = resultSet.getInt("0");
         }
         catch (ClassNotFoundException ex)
@@ -1245,6 +1259,7 @@ public class Database
     public void addEmail(String email, String name)
     {
         int id;
+        ResultSet resultSet;
         try
         {
             connectToDatabase();
@@ -1255,13 +1270,13 @@ public class Database
             resultSet.first();
             id = resultSet.getInt(1);
             closeStatement();
-            closeResultSet();
+            sth.close();
             sth = conn.prepareStatement("SELECT * FROM tblemail WHERE idemail = " + id);
             resultSet = sth.executeQuery();
             resultSet.first();
             
             alEmails.add(new Email(id, email, name));
-            closeResultSet();
+            sth.close();
             closeStatement();
             closeConnection();
         }
@@ -1363,6 +1378,7 @@ public class Database
     
     public Email getEmail(int id){
         Email email = null;
+        ResultSet resultSet;
         if(id != 0){
             try
             {
@@ -1381,7 +1397,14 @@ public class Database
                 Logger.getLogger(Database.class.getName()).log(Level.SEVERE, null, ex);
             }
             finally{
-                closeResultSet();
+                try
+                {
+                    sth.close();
+                }
+                catch (SQLException ex)
+                {
+                    Logger.getLogger(Database.class.getName()).log(Level.SEVERE, null, ex);
+                }
                 closeConnection();
             }
         }
@@ -1404,6 +1427,7 @@ public class Database
     public void addSms(int number, String name)
     {
         int id;
+        ResultSet resultSet;
         try
         {
             connectToDatabase();
@@ -1414,13 +1438,13 @@ public class Database
             resultSet.first();
             id = resultSet.getInt(1);
             closeStatement();
-            closeResultSet();
+            sth.close();
             sth = conn.prepareStatement("SELECT * FROM tblsms WHERE idSms = " + id);
             resultSet = sth.executeQuery();
             resultSet.first();
             
             alSms.add(new Sms(id, number, name));
-            closeResultSet();
+            sth.close();
             closeStatement();
             closeConnection();
         }
@@ -1522,6 +1546,7 @@ public class Database
     
     public Sms getSms(int id){
         Sms sms = null;
+        ResultSet resultSet;
         if(id != 0){
             try
             {
@@ -1540,7 +1565,14 @@ public class Database
                 Logger.getLogger(Database.class.getName()).log(Level.SEVERE, null, ex);
             }
             finally{
-                closeResultSet();
+                try
+                {
+                    sth.close();
+                }
+                catch (SQLException ex)
+                {
+                    Logger.getLogger(Database.class.getName()).log(Level.SEVERE, null, ex);
+                }
                 closeConnection();
             }
         }
@@ -1560,6 +1592,7 @@ public class Database
     
     //----------------------TextFiles-------------------------------------------------------
     public void addTextFile(String path){
+        ResultSet resultSet;
         try
         {
             String oldPath = path;
